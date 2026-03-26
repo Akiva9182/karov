@@ -625,7 +625,7 @@ async function loadEmbeddings() {
         const { done, value } = await reader.read();
         if (done) break;
         chunks.push(value); received += value.length;
-        const pct = Math.round((received / total) * 100);
+        const pct = Math.min(Math.round((received / total) * 100), 100);
         $('loadingBar').style.width = pct + '%';
         $('loadingText').textContent = pct + '%';
       }
