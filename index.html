@@ -31,7 +31,8 @@ body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); 
 .loading-screen.hidden { opacity:0; pointer-events:none; }
 .loading-title { font-size:2rem; font-weight:800; background:linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 .loading-bar-track { width:200px; height:6px; border-radius:3px; background:var(--bg-input); overflow:hidden; }
-.loading-bar-fill { height:100%; border-radius:3px; background:var(--primary); transition:width .3s; width:0; }
+.loading-bar-fill { height:100%; border-radius:3px; background:var(--primary); width:30%; animation:indeterminate 1.2s ease-in-out infinite; }
+@keyframes indeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
 .loading-text { font-size:.85rem; color:var(--text-dim); }
 .loading-error { max-width:400px; text-align:center; padding:24px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; display:none; }
 .loading-error.visible { display:block; }
@@ -281,7 +282,7 @@ body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); 
 <!-- Loading -->
 <div class="loading-screen" id="loadingScreen">
   <div class="loading-title">קרוב!</div>
-  <div class="loading-bar-track"><div class="loading-bar-fill" id="loadingBar"></div></div>
+  <div class="loading-bar-track" id="loadingBarTrack"><div class="loading-bar-fill"></div></div>
   <div class="loading-text" id="loadingText">טוען מילים...</div>
   <div class="loading-error" id="loadingError">
     <p>לא הצלחתי לטעון את קובץ המילים.</p>
@@ -453,6 +454,7 @@ body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); 
     <div class="win-actions">
       <button class="win-btn-primary" id="playAgainBtn">&#x1F504; שחק שוב</button>
       <button class="win-btn-secondary" id="shareBtn">&#x1F4E4; שתף תוצאה</button>
+      <button class="win-btn-secondary" id="winHomeBtn">&#x1F3E0; מסך בית</button>
     </div>
   </div>
 </div>
@@ -466,6 +468,7 @@ body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); 
     <div class="giveup-xp">בפעם הבאה! — <span style="direction:ltr;display:inline">0 XP</span></div>
     <div class="win-actions">
       <button class="win-btn-primary" id="giveupPlayAgain">&#x1F504; שחק שוב</button>
+      <button class="win-btn-secondary" id="giveupHomeBtn">&#x1F3E0; מסך בית</button>
     </div>
   </div>
 </div>
@@ -617,31 +620,14 @@ async function loadEmbeddings() {
   try {
     const resp = await fetch('embeddings.json');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const total = parseInt(resp.headers.get('Content-Length'), 10);
-    if (total && resp.body) {
-      const reader = resp.body.getReader();
-      const chunks = []; let received = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value); received += value.length;
-        const pct = Math.min(Math.round((received / total) * 100), 100);
-        $('loadingBar').style.width = pct + '%';
-        $('loadingText').textContent = pct + '%';
-      }
-      const all = new Uint8Array(received); let pos = 0;
-      for (const c of chunks) { all.set(c, pos); pos += c.length; }
-      embeddings = JSON.parse(new TextDecoder().decode(all));
-    } else {
-      embeddings = await resp.json();
-    }
+    embeddings = await resp.json();
     wordList = Object.keys(embeddings);
     if (wordList.length === 0) throw new Error('Empty');
     $('wordCountLabel').textContent = wordList.length.toLocaleString() + ' מילים במאגר';
     return true;
   } catch(e) {
     console.error(e);
-    $('loadingBar').style.display = 'none';
+    $('loadingBarTrack').style.display = 'none';
     $('loadingText').style.display = 'none';
     $('loadingError').classList.add('visible');
     return false;
@@ -709,6 +695,8 @@ function bindEvents() {
   $('playAgainBtn').addEventListener('click', playAgainFromWin);
   $('shareBtn').addEventListener('click', shareResult);
   $('giveupPlayAgain').addEventListener('click', playAgainFromGiveup);
+  $('winHomeBtn').addEventListener('click', homeFromWin);
+  $('giveupHomeBtn').addEventListener('click', homeFromGiveup);
   $('darkToggle').addEventListener('change', function() { settings.dark = this.checked; applyTheme(); saveSettings(); });
   $('soundToggle').addEventListener('change', function() { settings.sound = this.checked; saveSettings(); });
   document.querySelectorAll('.guess-table th[data-sort]').forEach(th => {
@@ -1041,6 +1029,8 @@ function handleWin() {
 
 function playAgainFromWin() { $('winOverlay').classList.remove('open'); clearChildren($('confettiContainer')); startNewGame(); }
 function playAgainFromGiveup() { $('giveupOverlay').classList.remove('open'); startNewGame(); }
+function homeFromWin() { $('winOverlay').classList.remove('open'); clearChildren($('confettiContainer')); localStorage.removeItem('karov_game'); goHome(); }
+function homeFromGiveup() { $('giveupOverlay').classList.remove('open'); localStorage.removeItem('karov_game'); goHome(); }
 
 function shareResult() {
   const gc = state.guesses.length;
