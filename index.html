@@ -485,9 +485,7 @@ const LEVELS = [
   { xp:35000, name:'קרוב מושלם',  icon:'\uD83D\uDC51\uD83D\uDC51' },
 ];
 
-const HINT_COSTS = { category: 50, letter: 75, length: 30 };
-
-const HINT_NEIGHBOR_COUNT = 10; // find top N neighbors, show 3
+const HINT_COSTS = { firstLetter: 30, wordLength: 30, lastLetter: 50 };
 
 // ===== EMBEDDINGS ENGINE =====
 let embeddings = {};
@@ -552,7 +550,7 @@ async function getGeminiEmbedding(word) {
 }
 
 // ===== STATE =====
-let state = { secretWord:'', guesses:[], maxScore:0, startTime:null, timerInterval:null, gameOver:false, gaveUp:false, hintsUsed:{category:false,letter:false,length:false} };
+let state = { secretWord:'', guesses:[], maxScore:0, startTime:null, timerInterval:null, gameOver:false, gaveUp:false, hintsUsed:{firstLetter:false,wordLength:false,lastLetter:false} };
 let settings = { dark:true, sound:true, geminiKey:'' };
 let stats = { gamesPlayed:0, gamesWon:0, gamesLost:0, totalGuesses:0, bestWin:null, distribution:{} };
 let xpData = { total:0, streak:0, longestStreak:0, bestXP:0, history:[] };
@@ -581,9 +579,9 @@ function createEl(tag, attrs, children) {
 function calculateXP(guessCount, hintsUsed, streak) {
   let base = Math.max(500 - guessCount * 5, 50);
   let penalty = 0;
-  if (hintsUsed.category) penalty += HINT_COSTS.category;
-  if (hintsUsed.letter) penalty += HINT_COSTS.letter;
-  if (hintsUsed.length) penalty += HINT_COSTS.length;
+  if (hintsUsed.firstLetter) penalty += HINT_COSTS.firstLetter;
+  if (hintsUsed.wordLength) penalty += HINT_COSTS.wordLength;
+  if (hintsUsed.lastLetter) penalty += HINT_COSTS.lastLetter;
   let raw = Math.max(base - penalty, 10);
   let mult = getStreakMult(streak);
   return { base, penalty, mult, total: Math.round(raw * mult) };
@@ -697,9 +695,9 @@ function bindEvents() {
   });
   $('submitBtn').addEventListener('click', () => submitGuess());
   $('hintBtn').addEventListener('click', toggleHintPanel);
-  $('hintCategory').addEventListener('click', () => useHint('category'));
-  $('hintLetter').addEventListener('click', () => useHint('letter'));
-  $('hintLength').addEventListener('click', () => useHint('length'));
+  $('hintFirstLetter').addEventListener('click', () => useHint('firstLetter'));
+  $('hintWordLength').addEventListener('click', () => useHint('wordLength'));
+  $('hintLastLetter').addEventListener('click', () => useHint('lastLetter'));
   $('giveUpBtn').addEventListener('click', handleGiveUp);
   $('helpBtn').addEventListener('click', () => openModal('help'));
   $('settingsBtn').addEventListener('click', () => openModal('settings'));
@@ -742,7 +740,7 @@ function startOrResume() {
         state.maxScore = sg.maxScore || 0;
         state.startTime = sg.startTime ? new Date(sg.startTime) : new Date();
         state.gameOver = false; state.gaveUp = false;
-        state.hintsUsed = sg.hintsUsed || {category:false,letter:false,length:false};
+        state.hintsUsed = sg.hintsUsed || {firstLetter:false,wordLength:false,lastLetter:false};
         precomputeForSecret(state.secretWord);
         showView('game'); renderGuesses(); updateUI(); updateHintPanel(); startTimer();
         $('guessInput').focus();
@@ -822,48 +820,37 @@ function hideHintPanel() { $('hintPanel').classList.remove('visible'); }
 function useHint(type) {
   if (state.hintsUsed[type] || state.gameOver) return;
   state.hintsUsed[type] = true;
+  const w = state.secretWord;
   let msg = '';
-  if (type === 'category') msg = 'מילים קרובות: ' + getNeighborHint();
-  else if (type === 'letter') msg = 'אות ראשונה: "' + state.secretWord[0] + '"';
-  else if (type === 'length') msg = 'אורך המילה: ' + state.secretWord.length + ' אותיות';
+  if (type === 'firstLetter') msg = '\u05D4\u05DE\u05D9\u05DC\u05D4 \u05DE\u05EA\u05D7\u05D9\u05DC\u05D4 \u05D1: "' + w[0] + '"';
+  else if (type === 'wordLength') msg = '\u05D4\u05DE\u05D9\u05DC\u05D4 \u05D1\u05D0\u05D5\u05E8\u05DA ' + w.length + ' \u05D0\u05D5\u05EA\u05D9\u05D5\u05EA';
+  else if (type === 'lastLetter') msg = '\u05D4\u05DE\u05D9\u05DC\u05D4 \u05E0\u05D2\u05DE\u05E8\u05EA \u05D1: "' + w[w.length - 1] + '"';
   showToast('warning', '\uD83D\uDCA1 ' + msg);
   updateHintPanel(); updateUI(); saveGame(); hideHintPanel();
   playSound('hint');
 }
 
-function getNeighborHint() {
-  // Find the 10 closest words, pick 3 random ones to show
-  const ranked = wordList
-    .filter(w => w !== state.secretWord)
-    .map(w => ({ w, s: precomputedScores[w] || 0 }))
-    .sort((a, b) => b.s - a.s)
-    .slice(0, 10);
-  // Shuffle and pick 3
-  for (let i = ranked.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [ranked[i], ranked[j]] = [ranked[j], ranked[i]];
-  }
-  return ranked.slice(0, 3).map(r => r.w).join(', ');
-}
-
 function updateHintPanel() {
-  ['category','letter','length'].forEach(type => {
-    const el = $('hint' + type.charAt(0).toUpperCase() + type.slice(1));
+  const w = state.secretWord;
+  const hintInfo = {
+    firstLetter: { id: 'hintFirstLetter', reveal: '"' + w[0] + '"' },
+    wordLength: { id: 'hintWordLength', reveal: w.length + ' \u05D0\u05D5\u05EA\u05D9\u05D5\u05EA' },
+    lastLetter: { id: 'hintLastLetter', reveal: '"' + w[w.length - 1] + '"' },
+  };
+  for (const [type, info] of Object.entries(hintInfo)) {
+    const el = $(info.id);
+    const costEl = el.querySelector('.hint-cost');
     if (state.hintsUsed[type]) {
       el.classList.add('used');
-      const costEl = el.querySelector('.hint-cost');
-      if (type === 'category') costEl.textContent = '\u2714';
-      else if (type === 'letter') costEl.textContent = '"' + state.secretWord[0] + '"';
-      else costEl.textContent = state.secretWord.length + ' אותיות';
+      costEl.textContent = info.reveal;
       costEl.style.color = 'var(--warning)';
     } else {
       el.classList.remove('used');
-      const costEl = el.querySelector('.hint-cost');
       costEl.textContent = '-' + HINT_COSTS[type] + ' XP';
       costEl.style.color = '';
     }
-  });
-  $('hintBtn').classList.toggle('has-used', state.hintsUsed.category && state.hintsUsed.letter && state.hintsUsed.length);
+  }
+  $('hintBtn').classList.toggle('has-used', state.hintsUsed.firstLetter && state.hintsUsed.wordLength && state.hintsUsed.lastLetter);
 }
 
 // ===== SUBMIT =====
