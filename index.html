@@ -518,7 +518,10 @@ async function loadEmbeddings(){
 }
 
 // ===== VIEWS =====
-function showView(n){$('homeScreen').classList.toggle('visible',n==='home');$('app').classList.toggle('ready',n==='game')}
+function showView(n){
+  if(n!=='game'&&state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
+  $('homeScreen').classList.toggle('visible',n==='home');$('app').classList.toggle('ready',n==='game');
+}
 
 function renderHome(){
   const info=getLevelInfo(xpData.total);
@@ -747,7 +750,8 @@ function getElapsed(){if(!state.startTime)return'00:00';const e=Math.floor((Date
 function handleGiveUp(){
   if(state.gameOver)return;
   if(!giveUpConfirm){giveUpConfirm=true;$('giveUpBtn').textContent='\uD83C\uDFF3\uFE0F בטוחים?';$('giveUpBtn').classList.add('confirm');setTimeout(()=>{giveUpConfirm=false;$('giveUpBtn').textContent='\uD83C\uDFF3\uFE0F ויתור';$('giveUpBtn').classList.remove('confirm')},3000);return}
-  state.gameOver=true;state.gaveUp=true;xpData.streak=0;saveXP();
+  state.gameOver=true;state.gaveUp=true;if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
+  xpData.streak=0;saveXP();
   stats.gamesPlayed++;stats.gamesLost++;saveStats();saveGame();
   $('giveupEmoji').textContent='\uD83D\uDE14';$('giveupTitle').textContent='המילה הייתה:';
   $('giveupWord').textContent=state.secretWord;
@@ -757,7 +761,8 @@ function handleGiveUp(){
 }
 
 function handleXPExhausted(){
-  state.gameOver=true;state.gaveUp=true;xpData.streak=0;saveXP();
+  state.gameOver=true;state.gaveUp=true;if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
+  xpData.streak=0;saveXP();
   stats.gamesPlayed++;stats.gamesLost++;saveStats();saveGame();
   $('giveupEmoji').textContent='\uD83D\uDE35';$('giveupTitle').textContent='נגמר ה-XP!';
   $('giveupWord').textContent=state.secretWord;
@@ -768,7 +773,7 @@ function handleXPExhausted(){
 
 // ===== WIN =====
 function handleWin(){
-  state.gameOver=true;saveGame();
+  state.gameOver=true;if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}saveGame();
   const gc=state.guesses.length,d=DIFFICULTY[state.difficulty];
   const startXP=d.startXP;
   const guessCost=gc*d.xpPerGuess;
