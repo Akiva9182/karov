@@ -442,7 +442,7 @@ const DIFFICULTY={
     hintCosts:{firstLetter:75,wordLength:50,lastLetter:100,category:60},description:'כל ניחוש עולה'},
 };
 
-const EMBEDDINGS_VERSION=2;
+const EMBEDDINGS_VERSION=3;
 const EMBEDDINGS_URL='embeddings.json?v='+EMBEDDINGS_VERSION;
 const CACHE_NAME='karov-embeddings-v'+EMBEDDINGS_VERSION;
 
@@ -519,7 +519,7 @@ async function loadEmbeddings(){
 
 // ===== VIEWS =====
 function showView(n){
-  if(n!=='game'&&state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
+  if(n!=='game'&&state.timerInterval){state.pausedElapsed=Date.now()-state.startTime;clearInterval(state.timerInterval);state.timerInterval=null}
   $('homeScreen').classList.toggle('visible',n==='home');$('app').classList.toggle('ready',n==='game');
 }
 
@@ -629,7 +629,7 @@ function confirmGoHome(){
   if(state.gameOver||state.gaveUp||!state.guesses.length){goHome();return}
   if(confirm('לצאת מהמשחק?'))goHome();
 }
-function goHome(){if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}renderHome();showView('home')}
+function goHome(){if(state.timerInterval){state.pausedElapsed=Date.now()-state.startTime;clearInterval(state.timerInterval);state.timerInterval=null}saveGame();renderHome();showView('home')}
 
 // ===== AUTOCOMPLETE =====
 function handleInputChange(){
@@ -744,7 +744,7 @@ function updateUI(){
 // ===== TIMER =====
 function startTimer(){
   if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
-  if(state.pausedElapsed)state.startTime=Date.now()-state.pausedElapsed;
+  if(state.pausedElapsed){state.startTime=Date.now()-state.pausedElapsed}
   state.pausedElapsed=0;
   state.timerInterval=setInterval(updateTimer,1000);updateTimer();
 }
