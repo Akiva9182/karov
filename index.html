@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>קרוב!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #6C63FF; --primary-dim: #4a43cc; --primary-glow: rgba(108,99,255,0.25);
+  --success: #00C853; --warning: #FF6D00; --danger: #EF5350; --gold: #FFD700;
+  --cold: #EF5350; --warm: #FF9800; --hot: #FDD835; --burning: #66BB6A; --correct: #FFD700;
+  --bg: #0f0f1a; --bg-card: rgba(255,255,255,0.05); --bg-card-hover: rgba(255,255,255,0.08);
+  --bg-input: rgba(255,255,255,0.08); --bg-modal: rgba(0,0,0,0.7);
+  --text: #f0f0f0; --text-dim: #a0a0b0; --text-muted: #666680;
+  --border: rgba(255,255,255,0.1); --shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+[data-theme="light"] {
+  --bg: #f5f5ff; --bg-card: rgba(108,99,255,0.06); --bg-card-hover: rgba(108,99,255,0.1);
+  --bg-input: rgba(0,0,0,0.05); --bg-modal: rgba(0,0,0,0.4);
+  --text: #1a1a2e; --text-dim: #555566; --text-muted: #999;
+  --border: rgba(0,0,0,0.1); --shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); min-height:100dvh; direction:rtl; transition:background .3s,color .3s; overflow-x:hidden; }
+
+/* Loading */
+.loading-screen { position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; transition:opacity .4s; }
+.loading-screen.hidden { opacity:0; pointer-events:none; }
+.loading-title { font-size:2rem; font-weight:800; background:linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.loading-bar-track { width:200px; height:6px; border-radius:3px; background:var(--bg-input); overflow:hidden; }
+.loading-bar-fill { height:100%; border-radius:3px; background:var(--primary); transition:width .3s; width:0; }
+.loading-text { font-size:.85rem; color:var(--text-dim); }
+.loading-error { max-width:400px; text-align:center; padding:24px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; display:none; }
+.loading-error.visible { display:block; }
+.loading-error p { font-size:.9rem; line-height:1.6; margin-bottom:12px; }
+.loading-error code { font-size:.8rem; background:var(--bg-input); padding:2px 6px; border-radius:4px; direction:ltr; }
+
+/* Home screen */
+.home-screen { max-width:440px; margin:0 auto; padding:32px 16px; min-height:100dvh; display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; text-align:center; }
+.home-screen.visible { display:flex; }
+.home-logo { font-size:3rem; font-weight:800; background:linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; animation:logoFloat 3s ease-in-out infinite; }
+@keyframes logoFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.home-subtitle { font-size:1rem; color:var(--text-dim); line-height:1.6; }
+.home-xp-card { width:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:16px; }
+.home-level-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.home-level-name { font-size:1rem; font-weight:600; }
+.home-level-xp { font-size:.8rem; color:var(--text-dim); direction:ltr; }
+.xp-bar-track { height:8px; border-radius:4px; background:var(--bg-input); overflow:hidden; }
+.xp-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--primary),#a78bfa); transition:width .6s; }
+.home-stats-row { display:flex; gap:8px; margin-top:10px; justify-content:center; }
+.home-stat { font-size:.8rem; color:var(--text-dim); padding:4px 10px; background:var(--bg-input); border-radius:8px; }
+.home-stat .v { color:var(--text); font-weight:600; }
+.home-play-btn { width:100%; padding:18px; border-radius:16px; border:none; background:var(--primary); color:white; font-family:'Rubik',sans-serif; font-size:1.2rem; font-weight:700; cursor:pointer; transition:all .2s; }
+.home-play-btn:hover { background:var(--primary-dim); transform:translateY(-2px); }
+.home-help-btn { padding:12px 24px; border-radius:12px; border:1px solid var(--border); background:transparent; color:var(--text); font-family:'Rubik',sans-serif; font-size:.9rem; cursor:pointer; }
+.home-help-btn:hover { background:var(--bg-card-hover); }
+.home-settings-link { font-size:.8rem; color:var(--text-muted); cursor:pointer; }
+.home-settings-link:hover { color:var(--primary); }
+
+/* App / Game */
+.app { max-width:520px; margin:0 auto; padding:16px; min-height:100dvh; display:none; flex-direction:column; }
+.app.ready { display:flex; }
+.header { display:flex; align-items:center; justify-content:space-between; padding:8px 0 12px; }
+.header h1 { font-size:1.5rem; font-weight:800; background:linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; cursor:pointer; }
+.header-actions { display:flex; gap:8px; }
+.icon-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.1rem; transition:all .2s; }
+.icon-btn:hover { background:var(--bg-card-hover); transform:scale(1.05); }
+.icon-btn:active { transform:scale(.95); }
+
+/* Input + Autocomplete + Hint */
+.input-wrapper { position:relative; margin-bottom:10px; }
+.input-area { display:flex; gap:8px; }
+.guess-input { flex:1; padding:14px 18px; border-radius:14px; border:2px solid var(--border); background:var(--bg-input); color:var(--text); font-family:'Rubik',sans-serif; font-size:1.1rem; direction:rtl; outline:none; transition:border-color .2s; }
+.guess-input::placeholder { color:var(--text-muted); }
+.guess-input:focus { border-color:var(--primary); }
+.guess-input:disabled { opacity:.5; }
+.hint-btn { width:48px; border-radius:14px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); cursor:pointer; font-size:1.2rem; transition:all .2s; flex-shrink:0; }
+.hint-btn:hover { background:var(--bg-card-hover); border-color:var(--warning); }
+.hint-btn.has-used { opacity:.6; }
+.submit-btn { padding:14px 24px; border-radius:14px; border:none; background:var(--primary); color:white; font-family:'Rubik',sans-serif; font-size:1rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.submit-btn:hover { background:var(--primary-dim); transform:translateY(-1px); }
+.submit-btn:active { transform:translateY(1px); }
+.submit-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+.autocomplete-list { position:absolute; top:100%; right:0; left:0; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-top:4px; overflow:hidden; z-index:10; display:none; box-shadow:var(--shadow); }
+.autocomplete-list.visible { display:block; }
+.autocomplete-item { padding:10px 16px; cursor:pointer; font-size:.9rem; transition:background .15s; border-bottom:1px solid var(--border); }
+.autocomplete-item:last-child { border-bottom:none; }
+.autocomplete-item:hover,.autocomplete-item.active { background:var(--bg-card-hover); }
+.autocomplete-item mark { background:transparent; color:var(--primary); font-weight:600; }
+
+/* Hint Panel */
+.hint-panel { position:absolute; top:100%; right:0; left:0; background:var(--bg); border:1px solid var(--border); border-radius:14px; margin-top:4px; padding:8px; z-index:15; display:none; box-shadow:var(--shadow); }
+.hint-panel.visible { display:block; animation:fadeIn .2s; }
+.hint-option { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:10px; cursor:pointer; transition:background .15s; margin-bottom:4px; }
+.hint-option:last-child { margin-bottom:0; }
+.hint-option:hover:not(.used) { background:var(--bg-card-hover); }
+.hint-option.used { opacity:.5; cursor:default; }
+.hint-option .hint-label { font-size:.85rem; }
+.hint-option .hint-cost { font-size:.75rem; color:var(--danger); font-weight:600; }
+.hint-option .hint-result { font-size:.85rem; color:var(--warning); font-weight:500; }
+
+/* Stats bar */
+.stats-bar { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
+.stat-chip { display:flex; align-items:center; gap:5px; padding:6px 10px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border); font-size:.8rem; color:var(--text-dim); }
+.stat-chip .val { color:var(--text); font-weight:600; }
+.stat-chip.xp-chip { border-color:rgba(108,99,255,.2); }
+.stat-chip.xp-chip .val { color:var(--primary); }
+.give-up-btn { margin-right:auto; padding:6px 10px; border-radius:10px; border:1px solid rgba(239,83,80,.2); background:transparent; color:var(--text-muted); font-family:'Rubik',sans-serif; font-size:.75rem; cursor:pointer; transition:all .2s; }
+.give-up-btn:hover { color:var(--danger); border-color:var(--danger); }
+.give-up-btn.confirm { color:var(--danger); border-color:var(--danger); background:rgba(239,83,80,.1); }
+
+/* Thermometer */
+.thermometer { margin-bottom:10px; }
+.thermo-label { font-size:.8rem; color:var(--text-dim); margin-bottom:5px; display:flex; justify-content:space-between; }
+.thermo-track { height:8px; border-radius:4px; background:var(--bg-input); overflow:hidden; }
+.thermo-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--cold),var(--warm),var(--hot),var(--burning),var(--success)); transition:width .6s cubic-bezier(.34,1.56,.64,1); }
+
+/* Guess Table */
+.table-container { flex:1; overflow-y:auto; max-height:calc(100dvh - 400px); min-height:180px; }
+.guess-table { width:100%; border-collapse:separate; border-spacing:0 3px; }
+.guess-table th { position:sticky; top:0; background:var(--bg); padding:6px 10px; font-size:.75rem; font-weight:600; color:var(--text-dim); text-align:right; cursor:pointer; user-select:none; z-index:2; }
+.guess-table th:hover { color:var(--primary); }
+.guess-table th.sorted::after { content:' \25BC'; font-size:.6rem; }
+.guess-table th.sorted.asc::after { content:' \25B2'; font-size:.6rem; }
+.guess-table td { padding:8px 10px; font-size:.85rem; vertical-align:middle; }
+.guess-row { border-radius:10px; transition:all .3s; animation:rowSlideIn .3s ease-out; }
+.guess-row td:first-child { border-radius:0 10px 10px 0; }
+.guess-row td:last-child { border-radius:10px 0 0 10px; }
+.guess-row.cold { background:rgba(239,83,80,.1); }
+.guess-row.warm { background:rgba(255,152,0,.1); }
+.guess-row.hot { background:rgba(253,216,53,.1); }
+.guess-row.burning { background:rgba(102,187,106,.1); }
+.guess-row.correct { background:rgba(255,215,0,.15); }
+.guess-row.highlight { animation:highlightPulse 1s ease-out; }
+.score-bar-cell { width:100px; }
+.score-bar-wrap { height:5px; border-radius:3px; background:var(--bg-input); overflow:hidden; }
+.score-bar { height:100%; border-radius:3px; transition:width .5s ease-out; }
+.guess-row.cold .score-bar { background:var(--cold); }
+.guess-row.warm .score-bar { background:var(--warm); }
+.guess-row.hot .score-bar { background:var(--hot); }
+.guess-row.burning .score-bar { background:var(--burning); }
+.guess-row.correct .score-bar { background:var(--correct); }
+.rank-badge { display:inline-block; padding:2px 7px; border-radius:6px; font-size:.7rem; font-weight:600; background:rgba(108,99,255,.15); color:var(--primary); }
+.word-cell { font-weight:500; }
+.score-cell { font-weight:600; direction:ltr; text-align:center; }
+.empty-state { text-align:center; padding:40px 16px; color:var(--text-muted); }
+.empty-state .emoji { font-size:2.5rem; margin-bottom:10px; }
+
+/* Toasts */
+.toast-bar { padding:10px 14px; border-radius:12px; margin-bottom:8px; font-size:.85rem; display:none; animation:fadeIn .3s; align-items:center; gap:8px; }
+.toast-bar.visible { display:flex; }
+.toast-bar.error { background:rgba(239,83,80,.1); border:1px solid rgba(239,83,80,.2); color:var(--danger); }
+.toast-bar.warning { background:rgba(255,109,0,.1); border:1px solid rgba(255,109,0,.2); color:var(--warning); }
+.toast-bar.info { background:rgba(108,99,255,.1); border:1px solid rgba(108,99,255,.2); color:var(--primary); }
+.toast-bar.success { background:rgba(0,200,83,.1); border:1px solid rgba(0,200,83,.2); color:var(--success); }
+.toast-bar .toast-link { text-decoration:underline; cursor:pointer; }
+
+/* Modals */
+.modal-backdrop { position:fixed; inset:0; background:var(--bg-modal); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; opacity:0; pointer-events:none; transition:opacity .25s; }
+.modal-backdrop.open { opacity:1; pointer-events:auto; }
+.modal { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:24px; max-width:440px; width:100%; max-height:85dvh; overflow-y:auto; transform:translateY(20px) scale(.96); transition:transform .25s; box-shadow:var(--shadow); }
+.modal-backdrop.open .modal { transform:translateY(0) scale(1); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.modal-header h2 { font-size:1.3rem; font-weight:700; }
+.modal-close { width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; }
+.modal-close:hover { background:var(--bg-card-hover); }
+.help-steps { list-style:none; }
+.help-steps li { display:flex; gap:12px; margin-bottom:12px; align-items:flex-start; }
+.step-num { width:26px; height:26px; border-radius:8px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; flex-shrink:0; }
+.step-text { font-size:.85rem; line-height:1.5; padding-top:2px; }
+.color-legend { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:14px 0; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:.8rem; }
+.legend-dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+.tip-box { padding:10px 12px; border-radius:10px; background:rgba(108,99,255,.1); border:1px solid rgba(108,99,255,.2); font-size:.8rem; color:var(--primary); margin-top:10px; }
+.modal-btn { width:100%; padding:14px; border-radius:14px; border:none; background:var(--primary); color:white; font-family:'Rubik',sans-serif; font-size:1rem; font-weight:600; cursor:pointer; margin-top:14px; transition:all .2s; }
+.modal-btn:hover { background:var(--primary-dim); }
+.settings-group { margin-bottom:18px; }
+.settings-group-title { font-size:.72rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+.setting-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+.setting-row:last-child { border-bottom:none; }
+.setting-label { font-size:.88rem; }
+.toggle { position:relative; width:44px; height:26px; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-track { position:absolute; inset:0; border-radius:13px; background:var(--bg-input); border:1px solid var(--border); cursor:pointer; transition:background .2s; }
+.toggle input:checked+.toggle-track { background:var(--primary); border-color:var(--primary); }
+.toggle-track::after { content:''; position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:white; transition:transform .2s; }
+.toggle input:checked+.toggle-track::after { transform:translateX(-18px); }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.stat-box { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center; }
+.stat-box .stat-val { font-size:1.3rem; font-weight:700; color:var(--primary); }
+.stat-box .stat-label { font-size:.68rem; color:var(--text-dim); margin-top:2px; }
+.histogram { margin-top:10px; }
+.histo-row { display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:.75rem; }
+.histo-label { width:45px; text-align:left; color:var(--text-dim); flex-shrink:0; direction:ltr; }
+.histo-bar-track { flex:1; height:18px; border-radius:4px; background:var(--bg-input); overflow:hidden; }
+.histo-bar { height:100%; border-radius:4px; background:var(--primary); min-width:2px; display:flex; align-items:center; justify-content:flex-end; padding:0 5px; font-size:.65rem; color:white; font-weight:600; }
+.danger-btn { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(239,83,80,.3); background:rgba(239,83,80,.1); color:var(--danger); font-family:'Rubik',sans-serif; font-size:.85rem; font-weight:600; cursor:pointer; }
+.danger-btn:hover { background:rgba(239,83,80,.2); }
+.gemini-input { width:100%; padding:10px 12px; border-radius:10px; border:2px solid var(--border); background:var(--bg-input); color:var(--text); font-family:'Rubik',monospace; font-size:.8rem; direction:ltr; text-align:left; outline:none; margin:8px 0; }
+.gemini-input:focus { border-color:var(--primary); }
+.gemini-note { font-size:.72rem; color:var(--text-muted); line-height:1.4; }
+.word-count-label { font-size:.68rem; color:var(--text-muted); text-align:center; margin-top:6px; }
+
+/* Win Overlay */
+.win-overlay { position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; opacity:0; pointer-events:none; transition:opacity .4s; overflow-y:auto; }
+.win-overlay.open { opacity:1; pointer-events:auto; }
+.win-content { max-width:440px; width:100%; text-align:center; }
+.win-emoji { font-size:3rem; animation:bounce .6s ease-out; }
+.win-title { font-size:1.8rem; font-weight:800; margin:6px 0; background:linear-gradient(135deg,var(--gold),#ffaa00); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.win-word { font-size:2.5rem; font-weight:800; color:var(--gold); margin:8px 0 16px; text-shadow:0 0 30px rgba(255,215,0,.3); animation:glow 2s ease-in-out infinite alternate; }
+.win-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; }
+.win-stat-box { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:10px 6px; }
+.win-stat-box .val { font-size:1.3rem; font-weight:700; color:var(--primary); }
+.win-stat-box .label { font-size:.68rem; color:var(--text-dim); margin-top:3px; }
+.xp-award { margin:16px 0; padding:16px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px; }
+.xp-award-line { display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:4px; }
+.xp-award-line .xp-val { font-weight:600; }
+.xp-award-line.penalty .xp-val { color:var(--danger); }
+.xp-award-line.mult .xp-val { color:var(--warning); }
+.xp-award-total { display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+.xp-award-total .xp-val { color:var(--primary); }
+.level-up-banner { margin-top:12px; padding:12px; border-radius:12px; background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(167,139,250,.15)); border:1px solid rgba(108,99,255,.3); animation:fadeIn .5s; }
+.level-up-banner .level-text { font-size:1rem; font-weight:700; color:var(--primary); }
+.level-up-banner .level-name { font-size:.85rem; color:var(--text-dim); margin-top:2px; }
+.win-actions { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.win-btn-primary { padding:14px; border-radius:14px; border:none; background:var(--primary); color:white; font-family:'Rubik',sans-serif; font-size:1rem; font-weight:700; cursor:pointer; transition:all .2s; }
+.win-btn-primary:hover { background:var(--primary-dim); transform:translateY(-2px); }
+.win-btn-secondary { padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-family:'Rubik',sans-serif; font-size:.9rem; font-weight:600; cursor:pointer; transition:all .2s; }
+.win-btn-secondary:hover { background:var(--bg-card-hover); }
+
+/* Give Up Overlay */
+.giveup-overlay { position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; opacity:0; pointer-events:none; transition:opacity .4s; }
+.giveup-overlay.open { opacity:1; pointer-events:auto; }
+.giveup-content { max-width:380px; width:100%; text-align:center; }
+.giveup-emoji { font-size:2.5rem; margin-bottom:8px; }
+.giveup-title { font-size:1.3rem; font-weight:700; margin-bottom:4px; color:var(--text-dim); }
+.giveup-word { font-size:2rem; font-weight:800; color:var(--text); margin:12px 0; }
+.giveup-xp { font-size:.9rem; color:var(--danger); margin-bottom:16px; }
+
+/* Confetti */
+.confetti-container { position:fixed; inset:0; pointer-events:none; z-index:210; overflow:hidden; }
+.confetti { position:absolute; width:10px; height:10px; top:-10px; animation:confettiFall linear forwards; }
+
+/* Animations */
+@keyframes rowSlideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes bounce { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+@keyframes glow { from{text-shadow:0 0 20px rgba(255,215,0,.3)} to{text-shadow:0 0 40px rgba(255,215,0,.6),0 0 80px rgba(255,215,0,.2)} }
+@keyframes confettiFall { to{top:110vh;transform:rotate(720deg)} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+.shake { animation:shake .3s ease-in-out; }
+@keyframes highlightPulse { 0%{box-shadow:0 0 0 0 var(--primary-glow)} 50%{box-shadow:0 0 0 6px var(--primary-glow)} 100%{box-shadow:0 0 0 0 transparent} }
+@keyframes countUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.table-container::-webkit-scrollbar { width:4px; }
+.table-container::-webkit-scrollbar-track { background:transparent; }
+.table-container::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+@media(max-width:480px) {
+  .app { padding:10px; }
+  .header h1 { font-size:1.3rem; }
+  .guess-input { padding:12px 14px; font-size:1rem; }
+  .submit-btn { padding:12px 16px; font-size:.9rem; }
+  .score-bar-cell { width:70px; }
+  .table-container { max-height:calc(100dvh - 380px); }
+  .win-word { font-size:2rem; }
+  .home-logo { font-size:2.5rem; }
+}
+@media(max-width:375px) {
+  .stats-bar { gap:5px; }
+  .stat-chip { padding:5px 8px; font-size:.75rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-title">קרוב!</div>
+  <div class="loading-bar-track"><div class="loading-bar-fill" id="loadingBar"></div></div>
+  <div class="loading-text" id="loadingText">טוען מילים...</div>
+  <div class="loading-error" id="loadingError">
+    <p>לא הצלחתי לטעון את קובץ המילים.</p>
+    <p>ודאו ש-<code>embeddings.json</code> נמצא באותה תיקייה.</p>
+  </div>
+</div>
+
+<!-- Home Screen -->
+<div class="home-screen" id="homeScreen">
+  <div class="home-logo">קרוב!</div>
+  <div class="home-subtitle">נחשו את המילה הסודית לפי דמיון סמנטי</div>
+  <div class="home-xp-card">
+    <div class="home-level-row">
+      <span class="home-level-name" id="homeLevelName"></span>
+      <span class="home-level-xp" id="homeLevelXP"></span>
+    </div>
+    <div class="xp-bar-track"><div class="xp-bar-fill" id="homeXPBar"></div></div>
+    <div class="home-stats-row">
+      <span class="home-stat"><span class="v" id="homeGames">0</span> משחקים</span>
+      <span class="home-stat"><span class="v" id="homeWinPct">0%</span> ניצחון</span>
+      <span class="home-stat" id="homeStreakChip" style="display:none"></span>
+    </div>
+  </div>
+  <button class="home-play-btn" id="homePlayBtn">שחקו!</button>
+  <button class="home-help-btn" id="homeHelpBtn">איך משחקים?</button>
+  <span class="home-settings-link" id="homeSettingsLink">הגדרות</span>
+</div>
+
+<!-- Game -->
+<div class="app" id="app">
+  <header class="header">
+    <h1 id="logoBtn">קרוב!</h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="helpBtn" title="עזרה" aria-label="עזרה">?</button>
+      <button class="icon-btn" id="settingsBtn" title="הגדרות" aria-label="הגדרות">&#x2699;</button>
+    </div>
+  </header>
+
+  <div class="input-wrapper" id="inputWrapper">
+    <div class="input-area">
+      <input type="text" class="guess-input" id="guessInput" placeholder="הקלידו מילה..." autocomplete="off">
+      <button class="hint-btn" id="hintBtn" title="רמזים">&#x1F4A1;</button>
+      <button class="submit-btn" id="submitBtn">נחש</button>
+    </div>
+    <div class="autocomplete-list" id="autocompleteList"></div>
+    <div class="hint-panel" id="hintPanel">
+      <div class="hint-option" id="hintFirstLetter" data-type="firstLetter">
+        <span class="hint-label">&#x1F524; אות ראשונה</span>
+        <span class="hint-cost">-30 XP</span>
+      </div>
+      <div class="hint-option" id="hintWordLength" data-type="wordLength">
+        <span class="hint-label">&#x1F4CF; אורך מילה</span>
+        <span class="hint-cost">-30 XP</span>
+      </div>
+      <div class="hint-option" id="hintLastLetter" data-type="lastLetter">
+        <span class="hint-label">&#x1F524; אות אחרונה</span>
+        <span class="hint-cost">-50 XP</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-bar error" id="errorBar"><span></span><span id="errorText"></span></div>
+  <div class="toast-bar warning" id="hintBar"><span>&#x1F4A1;</span><span id="hintText"></span></div>
+  <div class="toast-bar info" id="infoBar"><span></span><span id="infoText"></span></div>
+
+  <div class="stats-bar">
+    <div class="stat-chip">&#x1F3AF; <span class="val" id="guessCount">0</span></div>
+    <div class="stat-chip">&#x23F1; <span class="val" id="timer">00:00</span></div>
+    <div class="stat-chip xp-chip">&#x26A1; <span class="val" id="potentialXP">500</span> XP</div>
+    <button class="give-up-btn" id="giveUpBtn">&#x1F3F3; ויתור</button>
+  </div>
+
+  <div class="thermometer">
+    <div class="thermo-label"><span>דמיון מקסימלי</span><span id="maxScore">0/100</span></div>
+    <div class="thermo-track"><div class="thermo-fill" id="thermoFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="table-container" id="tableContainer">
+    <div class="empty-state" id="emptyState">
+      <div class="emoji">&#x1F50D;</div>
+      <p>נחשו מילה כדי להתחיל</p>
+    </div>
+    <table class="guess-table" id="guessTable" style="display:none">
+      <thead><tr>
+        <th data-sort="index" class="sorted">#</th>
+        <th data-sort="word">מילה</th>
+        <th data-sort="score">דמיון</th>
+        <th>דירוג</th>
+        <th class="score-bar-cell"></th>
+      </tr></thead>
+      <tbody id="guessBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-backdrop" id="helpModal">
+  <div class="modal" role="dialog" aria-labelledby="helpTitle">
+    <div class="modal-header">
+      <h2 id="helpTitle">איך לשחק?</h2>
+      <button class="modal-close" id="helpClose" aria-label="סגור">&#x2715;</button>
+    </div>
+    <ul class="help-steps">
+      <li><div class="step-num">1</div><div class="step-text">הקלידו מילה בעברית ולחצו "נחש"</div></li>
+      <li><div class="step-num">2</div><div class="step-text">תקבלו ציון דמיון סמנטי בין 0 ל-100</div></li>
+      <li><div class="step-num">3</div><div class="step-text">ככל שהציון גבוה יותר, המילה קרובה יותר למילה הסודית</div></li>
+      <li><div class="step-num">4</div><div class="step-text">השתמשו ברמזים (&#x1F4A1;) אם נתקעתם — אבל זה עולה XP</div></li>
+      <li><div class="step-num">5</div><div class="step-text">המטרה: גלו את המילה ובצברו כמה שיותר XP!</div></li>
+    </ul>
+    <div class="color-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--cold)"></div><span>קר (0-20)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warm)"></div><span>חמים (20-50)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--hot)"></div><span>חם (50-80)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--burning)"></div><span>רותח (80-100)</span></div>
+    </div>
+    <div class="tip-box">&#x1F4A1; טיפ: חשבו על מילים מאותו תחום סמנטי</div>
+    <button class="modal-btn" id="helpGotIt">הבנתי!</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal" role="dialog" aria-labelledby="settingsTitle">
+    <div class="modal-header">
+      <h2 id="settingsTitle">הגדרות</h2>
+      <button class="modal-close" id="settingsClose" aria-label="סגור">&#x2715;</button>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">תצוגה</div>
+      <div class="setting-row"><span class="setting-label">מצב כהה</span><label class="toggle"><input type="checkbox" id="darkToggle" checked><span class="toggle-track"></span></label></div>
+      <div class="setting-row"><span class="setting-label">אפקטי צליל</span><label class="toggle"><input type="checkbox" id="soundToggle" checked><span class="toggle-track"></span></label></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">סטטיסטיקות</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val" id="statGames">0</div><div class="stat-label">משחקים</div></div>
+        <div class="stat-box"><div class="stat-val" id="statWinPct">0%</div><div class="stat-label">ניצחון</div></div>
+        <div class="stat-box"><div class="stat-val" id="statBestXP">0</div><div class="stat-label">שיא XP</div></div>
+        <div class="stat-box"><div class="stat-val" id="statAvgXP">0</div><div class="stat-label">ממוצע XP</div></div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">מפתח Gemini (אופציונלי)</div>
+      <div class="gemini-note">מאפשר לנחש כל מילה, לא רק מהרשימה. חינמי מ-aistudio.google.com/apikey</div>
+      <input type="password" class="gemini-input" id="geminiKeyInput" placeholder="AIza...">
+      <button class="modal-btn" id="saveGeminiBtn" style="margin-top:4px;padding:10px;font-size:.85rem">שמור מפתח</button>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">מתקדם</div>
+      <button class="danger-btn" id="resetBtn">אפס את כל הנתונים</button>
+    </div>
+    <div class="word-count-label" id="wordCountLabel"></div>
+  </div>
+</div>
+
+<!-- Win Overlay -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-content">
+    <div class="win-emoji">&#x1F389;</div>
+    <div class="win-title">כל הכבוד!</div>
+    <div class="win-word" id="winWord"></div>
+    <div class="win-stats">
+      <div class="win-stat-box"><div class="val" id="winGuesses">0</div><div class="label">ניחושים</div></div>
+      <div class="win-stat-box"><div class="val" id="winTime">00:00</div><div class="label">זמן</div></div>
+      <div class="win-stat-box"><div class="val" id="winMaxSim">0</div><div class="label">דמיון מקסימלי</div></div>
+    </div>
+    <div class="xp-award" id="xpAward"></div>
+    <div id="levelUpBanner"></div>
+    <div class="win-actions">
+      <button class="win-btn-primary" id="playAgainBtn">&#x1F504; שחק שוב</button>
+      <button class="win-btn-secondary" id="shareBtn">&#x1F4E4; שתף תוצאה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Give Up Overlay -->
+<div class="giveup-overlay" id="giveupOverlay">
+  <div class="giveup-content">
+    <div class="giveup-emoji">&#x1F614;</div>
+    <div class="giveup-title">המילה הייתה:</div>
+    <div class="giveup-word" id="giveupWord"></div>
+    <div class="giveup-xp">בפעם הבאה! — <span style="direction:ltr;display:inline">0 XP</span></div>
+    <div class="win-actions">
+      <button class="win-btn-primary" id="giveupPlayAgain">&#x1F504; שחק שוב</button>
+    </div>
+  </div>
+</div>
+
+<div class="confetti-container" id="confettiContainer"></div>
+
+<script>
+// ===== CONSTANTS =====
+const LEVELS = [
+  { xp:0,     name:'מתחיל',       icon:'\u2B50' },
+  { xp:500,   name:'סקרן',        icon:'\u2B50\u2B50' },
+  { xp:1500,  name:'חוקר מילים',  icon:'\u2B50\u2B50\u2B50' },
+  { xp:3500,  name:'בלש סמנטי',   icon:'\uD83D\uDD25' },
+  { xp:7000,  name:'מאסטר',       icon:'\uD83D\uDD25\uD83D\uDD25' },
+  { xp:12000, name:'גאון',        icon:'\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25' },
+  { xp:20000, name:'אגדה',        icon:'\uD83D\uDC51' },
+  { xp:35000, name:'קרוב מושלם',  icon:'\uD83D\uDC51\uD83D\uDC51' },
+];
+
+const HINT_COSTS = { category: 50, letter: 75, length: 30 };
+
+const HINT_NEIGHBOR_COUNT = 10; // find top N neighbors, show 3
+
+// ===== EMBEDDINGS ENGINE =====
+let embeddings = {};
+let wordList = [];
+let precomputedScores = {};
+let precomputedRanks = {};
+
+function cosineSim(a, b) {
+  let dot = 0, nA = 0, nB = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; nA += a[i]*a[i]; nB += b[i]*b[i]; }
+  return dot / (Math.sqrt(nA) * Math.sqrt(nB));
+}
+function toScore(cos) { return Math.round(Math.max(0, Math.min(100, ((cos+1)/2)*100))); }
+
+function precomputeForSecret(sw) {
+  precomputedScores = {}; precomputedRanks = {};
+  const sv = embeddings[sw]; if (!sv) return;
+  const arr = [];
+  for (const w of wordList) {
+    if (w === sw) continue;
+    const s = toScore(cosineSim(sv, embeddings[w]));
+    precomputedScores[w] = s;
+    arr.push({ w, s });
+  }
+  arr.sort((a,b) => b.s - a.s);
+  arr.forEach((x,i) => { precomputedRanks[x.w] = i+1; });
+}
+
+function getLocalSimilarity(word) {
+  if (word === state.secretWord) return { score:100, rank:0 };
+  const s = precomputedScores[word];
+  if (s === undefined) return null;
+  const r = precomputedRanks[word];
+  return { score:s, rank: r<=1000 ? r : null };
+}
+
+function getRankForScore(score) {
+  let rank = 1;
+  for (const w of wordList) {
+    if (w === state.secretWord) continue;
+    if ((precomputedScores[w]||0) > score) rank++;
+  }
+  return rank <= 1000 ? rank : null;
+}
+
+// Gemini fallback
+async function getGeminiEmbedding(word) {
+  const cached = sessionStorage.getItem('emb_' + word);
+  if (cached) return JSON.parse(cached);
+  const key = settings.geminiKey;
+  if (!key) return null;
+  const resp = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=' + encodeURIComponent(key),
+    { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'models/gemini-embedding-001', content:{parts:[{text:word}]}, output_dimensionality:256 })
+    });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const vec = data.embedding.values;
+  sessionStorage.setItem('emb_' + word, JSON.stringify(vec));
+  return vec;
+}
+
+// ===== STATE =====
+let state = { secretWord:'', guesses:[], maxScore:0, startTime:null, timerInterval:null, gameOver:false, gaveUp:false, hintsUsed:{category:false,letter:false,length:false} };
+let settings = { dark:true, sound:true, geminiKey:'' };
+let stats = { gamesPlayed:0, gamesWon:0, gamesLost:0, totalGuesses:0, bestWin:null, distribution:{} };
+let xpData = { total:0, streak:0, longestStreak:0, bestXP:0, history:[] };
+let sortField = 'index'; let sortAsc = false; let acIndex = -1;
+let giveUpConfirm = false;
+
+// ===== DOM =====
+const $ = id => document.getElementById(id);
+function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function createEl(tag, attrs, children) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k,v] of Object.entries(attrs)) {
+    if (k==='textContent') el.textContent = v;
+    else if (k==='className') el.className = v;
+    else if (k.startsWith('style.')) el.style[k.slice(6)] = v;
+    else el.setAttribute(k, v);
+  }
+  if (children) for (const c of children) {
+    if (typeof c==='string') el.appendChild(document.createTextNode(c));
+    else if (c) el.appendChild(c);
+  }
+  return el;
+}
+
+// ===== XP SYSTEM =====
+function calculateXP(guessCount, hintsUsed, streak) {
+  let base = Math.max(500 - guessCount * 5, 50);
+  let penalty = 0;
+  if (hintsUsed.category) penalty += HINT_COSTS.category;
+  if (hintsUsed.letter) penalty += HINT_COSTS.letter;
+  if (hintsUsed.length) penalty += HINT_COSTS.length;
+  let raw = Math.max(base - penalty, 10);
+  let mult = getStreakMult(streak);
+  return { base, penalty, mult, total: Math.round(raw * mult) };
+}
+
+function getStreakMult(s) {
+  if (s >= 10) return 3.0;
+  if (s >= 5) return 2.0;
+  if (s >= 3) return 1.5;
+  if (s >= 2) return 1.2;
+  return 1.0;
+}
+
+function getPotentialXP() {
+  if (state.gameOver) return 0;
+  return calculateXP(state.guesses.length, state.hintsUsed, xpData.streak).total;
+}
+
+function getLevelInfo(totalXP) {
+  let lvl = 0;
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (totalXP >= LEVELS[i].xp) { lvl = i; break; }
+  }
+  const cur = LEVELS[lvl];
+  const next = LEVELS[lvl + 1];
+  const progress = next ? (totalXP - cur.xp) / (next.xp - cur.xp) : 1;
+  return { level: lvl+1, name: cur.name, icon: cur.icon, xpInLevel: totalXP - cur.xp,
+           xpNeeded: next ? next.xp - cur.xp : 0, progress: Math.min(progress, 1), totalXP };
+}
+
+// ===== LOADING =====
+async function loadEmbeddings() {
+  try {
+    const resp = await fetch('embeddings.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const total = parseInt(resp.headers.get('Content-Length'), 10);
+    if (total && resp.body) {
+      const reader = resp.body.getReader();
+      const chunks = []; let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); received += value.length;
+        const pct = Math.round((received / total) * 100);
+        $('loadingBar').style.width = pct + '%';
+        $('loadingText').textContent = pct + '%';
+      }
+      const all = new Uint8Array(received); let pos = 0;
+      for (const c of chunks) { all.set(c, pos); pos += c.length; }
+      embeddings = JSON.parse(new TextDecoder().decode(all));
+    } else {
+      embeddings = await resp.json();
+    }
+    wordList = Object.keys(embeddings);
+    if (wordList.length === 0) throw new Error('Empty');
+    $('wordCountLabel').textContent = wordList.length.toLocaleString() + ' מילים במאגר';
+    return true;
+  } catch(e) {
+    console.error(e);
+    $('loadingBar').style.display = 'none';
+    $('loadingText').style.display = 'none';
+    $('loadingError').classList.add('visible');
+    return false;
+  }
+}
+
+// ===== VIEWS =====
+function showView(name) {
+  $('homeScreen').classList.toggle('visible', name === 'home');
+  $('app').classList.toggle('ready', name === 'game');
+}
+
+// ===== HOME SCREEN =====
+function renderHome() {
+  const info = getLevelInfo(xpData.total);
+  $('homeLevelName').textContent = info.icon + ' ' + info.name;
+  $('homeLevelXP').textContent = info.totalXP.toLocaleString() + ' XP';
+  $('homeXPBar').style.width = (info.progress * 100) + '%';
+  $('homeGames').textContent = stats.gamesPlayed;
+  const winPct = stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
+  $('homeWinPct').textContent = winPct + '%';
+  if (xpData.streak > 0) {
+    $('homeStreakChip').style.display = '';
+    $('homeStreakChip').textContent = '\uD83D\uDD25 רצף: ' + xpData.streak;
+  } else {
+    $('homeStreakChip').style.display = 'none';
+  }
+}
+
+// ===== INIT =====
+async function init() {
+  loadSettings(); loadStats(); loadXP(); applyTheme();
+  const ok = await loadEmbeddings();
+  if (!ok) return;
+  $('loadingScreen').classList.add('hidden');
+  renderHome();
+  showView('home');
+  bindEvents();
+}
+
+function bindEvents() {
+  $('homePlayBtn').addEventListener('click', startOrResume);
+  $('homeHelpBtn').addEventListener('click', () => openModal('help'));
+  $('homeSettingsLink').addEventListener('click', () => openModal('settings'));
+  $('logoBtn').addEventListener('click', confirmGoHome);
+  $('guessInput').addEventListener('keydown', handleInputKeydown);
+  $('guessInput').addEventListener('input', handleInputChange);
+  $('guessInput').addEventListener('focus', handleInputChange);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.input-wrapper')) { hideAutocomplete(); hideHintPanel(); }
+  });
+  $('submitBtn').addEventListener('click', () => submitGuess());
+  $('hintBtn').addEventListener('click', toggleHintPanel);
+  $('hintCategory').addEventListener('click', () => useHint('category'));
+  $('hintLetter').addEventListener('click', () => useHint('letter'));
+  $('hintLength').addEventListener('click', () => useHint('length'));
+  $('giveUpBtn').addEventListener('click', handleGiveUp);
+  $('helpBtn').addEventListener('click', () => openModal('help'));
+  $('settingsBtn').addEventListener('click', () => openModal('settings'));
+  $('helpClose').addEventListener('click', () => closeModal('help'));
+  $('helpGotIt').addEventListener('click', () => closeModal('help'));
+  $('settingsClose').addEventListener('click', () => closeModal('settings'));
+  $('saveGeminiBtn').addEventListener('click', saveGeminiKey);
+  $('resetBtn').addEventListener('click', confirmReset);
+  $('playAgainBtn').addEventListener('click', playAgainFromWin);
+  $('shareBtn').addEventListener('click', shareResult);
+  $('giveupPlayAgain').addEventListener('click', playAgainFromGiveup);
+  $('darkToggle').addEventListener('change', function() { settings.dark = this.checked; applyTheme(); saveSettings(); });
+  $('soundToggle').addEventListener('change', function() { settings.sound = this.checked; saveSettings(); });
+  document.querySelectorAll('.guess-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const f = th.dataset.sort;
+      if (sortField === f) sortAsc = !sortAsc;
+      else { sortField = f; sortAsc = f === 'score'; }
+      document.querySelectorAll('.guess-table th').forEach(h => h.classList.remove('sorted','asc'));
+      th.classList.add('sorted'); if (sortAsc) th.classList.add('asc');
+      renderGuesses();
+    });
+  });
+  document.querySelectorAll('.modal-backdrop').forEach(bd => {
+    bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id.replace('Modal','')); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { ['help','settings'].forEach(closeModal); hideAutocomplete(); hideHintPanel(); }
+  });
+}
+
+function startOrResume() {
+  const saved = localStorage.getItem('karov_game');
+  if (saved) {
+    try {
+      const sg = JSON.parse(saved);
+      if (sg.secretWord && embeddings[sg.secretWord] && !sg.gameOver && !sg.gaveUp) {
+        state.secretWord = sg.secretWord;
+        state.guesses = sg.guesses || [];
+        state.maxScore = sg.maxScore || 0;
+        state.startTime = sg.startTime ? new Date(sg.startTime) : new Date();
+        state.gameOver = false; state.gaveUp = false;
+        state.hintsUsed = sg.hintsUsed || {category:false,letter:false,length:false};
+        precomputeForSecret(state.secretWord);
+        showView('game'); renderGuesses(); updateUI(); updateHintPanel(); startTimer();
+        $('guessInput').focus();
+        return;
+      }
+    } catch(e) {}
+  }
+  startNewGame();
+}
+
+function startNewGame() {
+  state.secretWord = wordList[Math.floor(Math.random() * wordList.length)];
+  state.guesses = []; state.maxScore = 0; state.startTime = new Date();
+  state.gameOver = false; state.gaveUp = false;
+  state.hintsUsed = {category:false,letter:false,length:false};
+  giveUpConfirm = false;
+  precomputeForSecret(state.secretWord);
+  saveGame();
+  showView('game'); renderGuesses(); updateUI(); updateHintPanel();
+  $('guessInput').value = ''; $('guessInput').disabled = false; $('submitBtn').disabled = false;
+  $('giveUpBtn').textContent = '\uD83C\uDFF3\uFE0F ויתור'; $('giveUpBtn').classList.remove('confirm');
+  hideAllToasts();
+  $('timer').textContent = '00:00';
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  startTimer();
+  $('guessInput').focus();
+}
+
+function confirmGoHome() {
+  if (state.gameOver || state.gaveUp || state.guesses.length === 0) { goHome(); return; }
+  if (confirm('לצאת מהמשחק?')) goHome();
+}
+
+function goHome() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  renderHome(); showView('home');
+}
+
+// ===== AUTOCOMPLETE =====
+function handleInputChange() {
+  const val = $('guessInput').value.trim();
+  if (val.length < 1 || state.gameOver) { hideAutocomplete(); return; }
+  const matches = wordList.filter(w => w.startsWith(val) && w !== val).slice(0, 5);
+  if (!matches.length) { hideAutocomplete(); return; }
+  const list = $('autocompleteList'); clearChildren(list); acIndex = -1;
+  for (const word of matches) {
+    const item = createEl('div', {className:'autocomplete-item'});
+    item.appendChild(createEl('mark', {textContent:val}));
+    item.appendChild(document.createTextNode(word.slice(val.length)));
+    item.addEventListener('mousedown', e => { e.preventDefault(); $('guessInput').value = word; hideAutocomplete(); submitGuess(); });
+    list.appendChild(item);
+  }
+  list.classList.add('visible');
+}
+
+function handleInputKeydown(e) {
+  const list = $('autocompleteList');
+  const items = list.querySelectorAll('.autocomplete-item');
+  const vis = list.classList.contains('visible');
+  if (e.key==='ArrowDown' && vis) { e.preventDefault(); acIndex = Math.min(acIndex+1,items.length-1); updateAcHL(items); }
+  else if (e.key==='ArrowUp' && vis) { e.preventDefault(); acIndex = Math.max(acIndex-1,-1); updateAcHL(items); }
+  else if (e.key==='Enter') { if (vis && acIndex>=0 && items[acIndex]) { e.preventDefault(); $('guessInput').value=items[acIndex].textContent; hideAutocomplete(); submitGuess(); } else submitGuess(); }
+  else if (e.key==='Escape' && vis) { hideAutocomplete(); e.stopPropagation(); }
+  else if (e.key==='Tab' && vis) { e.preventDefault(); if (items.length) { $('guessInput').value = items[acIndex>=0?acIndex:0].textContent; hideAutocomplete(); } }
+}
+function updateAcHL(items) { items.forEach((it,i) => it.classList.toggle('active', i===acIndex)); }
+function hideAutocomplete() { $('autocompleteList').classList.remove('visible'); acIndex = -1; }
+
+// ===== HINTS =====
+function toggleHintPanel() {
+  const p = $('hintPanel');
+  if (p.classList.contains('visible')) hideHintPanel();
+  else { hideAutocomplete(); p.classList.add('visible'); }
+}
+function hideHintPanel() { $('hintPanel').classList.remove('visible'); }
+
+function useHint(type) {
+  if (state.hintsUsed[type] || state.gameOver) return;
+  state.hintsUsed[type] = true;
+  let msg = '';
+  if (type === 'category') msg = 'מילים קרובות: ' + getNeighborHint();
+  else if (type === 'letter') msg = 'אות ראשונה: "' + state.secretWord[0] + '"';
+  else if (type === 'length') msg = 'אורך המילה: ' + state.secretWord.length + ' אותיות';
+  showToast('warning', '\uD83D\uDCA1 ' + msg);
+  updateHintPanel(); updateUI(); saveGame(); hideHintPanel();
+  playSound('hint');
+}
+
+function getNeighborHint() {
+  // Find the 10 closest words, pick 3 random ones to show
+  const ranked = wordList
+    .filter(w => w !== state.secretWord)
+    .map(w => ({ w, s: precomputedScores[w] || 0 }))
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 10);
+  // Shuffle and pick 3
+  for (let i = ranked.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ranked[i], ranked[j]] = [ranked[j], ranked[i]];
+  }
+  return ranked.slice(0, 3).map(r => r.w).join(', ');
+}
+
+function updateHintPanel() {
+  ['category','letter','length'].forEach(type => {
+    const el = $('hint' + type.charAt(0).toUpperCase() + type.slice(1));
+    if (state.hintsUsed[type]) {
+      el.classList.add('used');
+      const costEl = el.querySelector('.hint-cost');
+      if (type === 'category') costEl.textContent = '\u2714';
+      else if (type === 'letter') costEl.textContent = '"' + state.secretWord[0] + '"';
+      else costEl.textContent = state.secretWord.length + ' אותיות';
+      costEl.style.color = 'var(--warning)';
+    } else {
+      el.classList.remove('used');
+      const costEl = el.querySelector('.hint-cost');
+      costEl.textContent = '-' + HINT_COSTS[type] + ' XP';
+      costEl.style.color = '';
+    }
+  });
+  $('hintBtn').classList.toggle('has-used', state.hintsUsed.category && state.hintsUsed.letter && state.hintsUsed.length);
+}
+
+// ===== SUBMIT =====
+async function submitGuess() {
+  hideAutocomplete(); hideHintPanel();
+  const input = $('guessInput');
+  const word = input.value.trim();
+  if (!word || state.gameOver) return;
+
+  const existing = state.guesses.find(g => g.word === word);
+  if (existing) { highlightRow(existing.index); input.value = ''; return; }
+
+  // Local lookup
+  if (embeddings[word]) { processGuess(word, getLocalSimilarity(word)); return; }
+
+  // Gemini fallback
+  if (!settings.geminiKey) {
+    const txt = createEl('span', {}, [
+      document.createTextNode('המילה לא ברשימה. '),
+      (() => { const a = createEl('span', {className:'toast-link', textContent:'הוסיפו מפתח Gemini בהגדרות'}); a.addEventListener('click', () => { hideAllToasts(); openModal('settings'); }); return a; })(),
+      document.createTextNode(' \uD83D\uDD11')
+    ]);
+    showToastEl('info', txt);
+    input.classList.add('shake'); setTimeout(() => input.classList.remove('shake'), 300);
+    return;
+  }
+
+  input.disabled = true; $('submitBtn').disabled = true; $('submitBtn').textContent = '...';
+  try {
+    const vec = await getGeminiEmbedding(word);
+    if (!vec) throw new Error('no vec');
+    const sv = embeddings[state.secretWord];
+    const score = word === state.secretWord ? 100 : toScore(cosineSim(vec, sv));
+    const rank = score === 100 ? 0 : getRankForScore(score);
+    processGuess(word, { score, rank });
+  } catch(e) {
+    showToast('error', 'לא הצלחתי לבדוק, נסו שוב');
+  } finally {
+    input.disabled = false; $('submitBtn').disabled = false; $('submitBtn').textContent = 'נחש'; input.focus();
+  }
+}
+
+function processGuess(word, result) {
+  if (!result) return;
+  state.guesses.push({ word, score:result.score, rank:result.rank, index:state.guesses.length+1 });
+  if (result.score > state.maxScore) state.maxScore = result.score;
+  playSound(result.score === 100 ? 'win' : 'guess');
+  renderGuesses(); updateUI(); saveGame(); $('guessInput').value = '';
+  if (result.score === 100) { handleWin(); return; }
+  $('guessInput').focus();
+}
+
+function highlightRow(idx) {
+  for (const row of $('guessBody').querySelectorAll('.guess-row')) {
+    if (row.firstChild && row.firstChild.textContent === String(idx)) {
+      row.classList.remove('highlight'); void row.offsetWidth; row.classList.add('highlight');
+      row.scrollIntoView({behavior:'smooth',block:'nearest'}); break;
+    }
+  }
+}
+
+// ===== RENDER =====
+function getScoreClass(s) { return s===100?'correct':s>=80?'burning':s>=50?'hot':s>=20?'warm':'cold'; }
+
+function renderGuesses() {
+  const body = $('guessBody'); const table = $('guessTable'); const empty = $('emptyState');
+  if (!state.guesses.length) { table.style.display='none'; empty.style.display=''; return; }
+  table.style.display=''; empty.style.display='none';
+  const sorted = [...state.guesses].sort((a,b) => {
+    if (sortField==='word') return sortAsc ? a.word.localeCompare(b.word,'he') : b.word.localeCompare(a.word,'he');
+    return sortAsc ? a[sortField]-b[sortField] : b[sortField]-a[sortField];
+  });
+  clearChildren(body);
+  for (const g of sorted) {
+    const cls = getScoreClass(g.score);
+    const tr = createEl('tr',{className:'guess-row '+cls});
+    tr.appendChild(createEl('td',{'style.color':'var(--text-muted)',textContent:String(g.index)}));
+    tr.appendChild(createEl('td',{className:'word-cell',textContent:g.word}));
+    tr.appendChild(createEl('td',{className:'score-cell',textContent:String(g.score)}));
+    const tdR = createEl('td');
+    if (g.rank) tdR.appendChild(createEl('span',{className:'rank-badge',textContent:g.rank+'/1000'}));
+    else tdR.textContent = '\u2014';
+    tr.appendChild(tdR);
+    const tdB = createEl('td',{className:'score-bar-cell'});
+    const bw = createEl('div',{className:'score-bar-wrap'}); const b = createEl('div',{className:'score-bar'});
+    b.style.width = g.score+'%'; bw.appendChild(b); tdB.appendChild(bw); tr.appendChild(tdB);
+    body.appendChild(tr);
+  }
+  if (sortField==='index' && !sortAsc) $('tableContainer').scrollTop = 0;
+}
+
+function updateUI() {
+  $('guessCount').textContent = state.guesses.length;
+  $('maxScore').textContent = state.maxScore + '/100';
+  $('thermoFill').style.width = state.maxScore + '%';
+  $('potentialXP').textContent = getPotentialXP();
+}
+
+// ===== TIMER =====
+function startTimer() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(updateTimer, 1000); updateTimer();
+}
+function updateTimer() {
+  if (!state.startTime || state.gameOver) return;
+  const e = Math.floor((Date.now() - new Date(state.startTime).getTime())/1000);
+  $('timer').textContent = String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');
+}
+function getElapsed() {
+  if (!state.startTime) return '00:00';
+  const e = Math.floor((Date.now() - new Date(state.startTime).getTime())/1000);
+  return String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');
+}
+
+// ===== GIVE UP =====
+function handleGiveUp() {
+  if (state.gameOver) return;
+  if (!giveUpConfirm) {
+    giveUpConfirm = true;
+    $('giveUpBtn').textContent = '\uD83C\uDFF3\uFE0F בטוחים?';
+    $('giveUpBtn').classList.add('confirm');
+    setTimeout(() => { giveUpConfirm = false; $('giveUpBtn').textContent = '\uD83C\uDFF3\uFE0F ויתור'; $('giveUpBtn').classList.remove('confirm'); }, 3000);
+    return;
+  }
+  state.gameOver = true; state.gaveUp = true;
+  xpData.streak = 0; saveXP();
+  stats.gamesPlayed++; stats.gamesLost++; saveStats(); saveGame();
+  $('giveupWord').textContent = state.secretWord;
+  $('giveupOverlay').classList.add('open');
+  $('guessInput').disabled = true; $('submitBtn').disabled = true;
+}
+
+// ===== WIN =====
+function handleWin() {
+  state.gameOver = true; saveGame();
+  const gc = state.guesses.length;
+  const xpResult = calculateXP(gc, state.hintsUsed, xpData.streak);
+
+  $('winWord').textContent = state.secretWord;
+  $('winGuesses').textContent = gc;
+  $('winTime').textContent = getElapsed();
+  $('winMaxSim').textContent = state.guesses.filter(g=>g.score<100).reduce((m,g)=>Math.max(m,g.score),0);
+
+  // XP award display
+  const award = $('xpAward'); clearChildren(award);
+  const addLine = (label, val, cls) => {
+    const line = createEl('div', {className:'xp-award-line'+(cls?' '+cls:'')});
+    line.appendChild(createEl('span',{textContent:label}));
+    line.appendChild(createEl('span',{className:'xp-val',textContent:val}));
+    award.appendChild(line);
+  };
+  addLine('XP בסיס ('+gc+' ניחושים)', '+'+xpResult.base);
+  if (xpResult.penalty > 0) addLine('קנס רמזים', '-'+xpResult.penalty, 'penalty');
+  if (xpResult.mult > 1) addLine('מכפיל רצף (x'+xpResult.mult+')', '\u00D7'+xpResult.mult, 'mult');
+  const totalLine = createEl('div',{className:'xp-award-total'});
+  totalLine.appendChild(createEl('span',{textContent:'סה"כ'}));
+  totalLine.appendChild(createEl('span',{className:'xp-val',textContent:'+'+xpResult.total+' XP'}));
+  award.appendChild(totalLine);
+
+  // Level up check
+  const oldLevel = getLevelInfo(xpData.total).level;
+  xpData.total += xpResult.total;
+  xpData.streak++;
+  if (xpData.streak > xpData.longestStreak) xpData.longestStreak = xpData.streak;
+  if (xpResult.total > xpData.bestXP) xpData.bestXP = xpResult.total;
+  xpData.history.push({ xp:xpResult.total, guesses:gc, hints:Object.values(state.hintsUsed).filter(Boolean).length, date:new Date().toISOString() });
+  if (xpData.history.length > 100) xpData.history = xpData.history.slice(-100);
+  saveXP();
+
+  const newInfo = getLevelInfo(xpData.total);
+  const banner = $('levelUpBanner'); clearChildren(banner);
+  if (newInfo.level > oldLevel) {
+    const div = createEl('div',{className:'level-up-banner'});
+    div.appendChild(createEl('div',{className:'level-text',textContent:'\u2B50 \u05E2\u05DC\u05D9\u05EA\u05DD \u05DC\u05E8\u05DE\u05D4 '+newInfo.level+'\u200F!'}));
+    div.appendChild(createEl('div',{className:'level-name',textContent:newInfo.icon+' '+newInfo.name}));
+    banner.appendChild(div);
+  }
+
+  stats.gamesPlayed++; stats.gamesWon++; stats.totalGuesses += gc;
+  if (!stats.bestWin || gc < stats.bestWin) stats.bestWin = gc;
+  const bucket = gc<=5?'1-5':gc<=10?'6-10':gc<=20?'11-20':gc<=40?'21-40':'41+';
+  stats.distribution[bucket] = (stats.distribution[bucket]||0)+1;
+  saveStats();
+
+  $('guessInput').disabled = true; $('submitBtn').disabled = true;
+  setTimeout(() => { $('winOverlay').classList.add('open'); spawnConfetti(); }, 300);
+}
+
+function playAgainFromWin() { $('winOverlay').classList.remove('open'); clearChildren($('confettiContainer')); startNewGame(); }
+function playAgainFromGiveup() { $('giveupOverlay').classList.remove('open'); startNewGame(); }
+
+function shareResult() {
+  const gc = state.guesses.length;
+  const traj = state.guesses.map(g => g.score>=80?'\uD83D\uDFE9':g.score>=50?'\uD83D\uDFE8':g.score>=20?'\uD83D\uDFE7':'\uD83D\uDFE5').join('');
+  const xp = calculateXP(gc, state.hintsUsed, xpData.streak - 1);
+  const text = 'קרוב! \uD83C\uDFAF\nמצאתי את המילה ב-'+gc+' ניחושים!\n\u23F1 '+getElapsed()+' | +'+xp.total+' XP\n'+traj;
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('success','הועתק ללוח!'));
+}
+
+// ===== SOUND =====
+let audioCtx = null;
+function playSound(type) {
+  if (!settings.sound) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (type==='guess') {
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);
+      o.frequency.setValueAtTime(600,audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(800,audioCtx.currentTime+.08);
+      g.gain.setValueAtTime(.08,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.15);
+      o.start();o.stop(audioCtx.currentTime+.15);
+    } else if (type==='win') {
+      [523,659,784,1047].forEach((f,i) => {
+        const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+        o.connect(g);g.connect(audioCtx.destination);
+        o.frequency.setValueAtTime(f,audioCtx.currentTime+i*.15);
+        g.gain.setValueAtTime(.1,audioCtx.currentTime+i*.15);
+        g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+i*.15+.4);
+        o.start(audioCtx.currentTime+i*.15);o.stop(audioCtx.currentTime+i*.15+.4);
+      });
+    } else if (type==='hint') {
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);o.type='triangle';
+      o.frequency.setValueAtTime(440,audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(660,audioCtx.currentTime+.1);
+      g.gain.setValueAtTime(.06,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.2);
+      o.start();o.stop(audioCtx.currentTime+.2);
+    }
+  } catch(e) {}
+}
+
+function spawnConfetti() {
+  const c=$('confettiContainer');
+  const colors=['#6C63FF','#00C853','#FFD700','#FF6D00','#EF5350','#a78bfa','#38bdf8'];
+  for (let i=0;i<80;i++) {
+    const d=document.createElement('div'); d.className='confetti';
+    d.style.left=Math.random()*100+'vw'; d.style.background=colors[Math.floor(Math.random()*colors.length)];
+    d.style.width=(Math.random()*8+6)+'px'; d.style.height=(Math.random()*8+6)+'px';
+    d.style.borderRadius=Math.random()>.5?'50%':'2px';
+    d.style.animationDuration=(Math.random()*2+2)+'s'; d.style.animationDelay=(Math.random()*1.5)+'s';
+    d.style.opacity=String(Math.random()*.5+.5); c.appendChild(d);
+  }
+  setTimeout(()=>clearChildren(c),5000);
+}
+
+// ===== MODALS / TOASTS =====
+function openModal(n) { $(n+'Modal').classList.add('open'); if (n==='settings') updateSettingsUI(); }
+function closeModal(n) { $(n+'Modal').classList.remove('open'); }
+
+let toastTimers = {};
+function showToast(type, msg) {
+  const map = {error:'errorBar',warning:'hintBar',info:'infoBar',success:'errorBar'};
+  const id = map[type]||'errorBar';
+  const bar = $(id); const txt = bar.querySelector('span:last-child');
+  txt.textContent = msg;
+  bar.className = 'toast-bar '+(type==='success'?'success':type)+' visible';
+  if (toastTimers[id]) clearTimeout(toastTimers[id]);
+  toastTimers[id] = setTimeout(() => bar.classList.remove('visible'), type==='warning'?10000:3000);
+}
+
+function showToastEl(type, el) {
+  const map = {error:'errorBar',warning:'hintBar',info:'infoBar'};
+  const id = map[type]||'infoBar';
+  const bar = $(id); const txt = bar.querySelector('span:last-child');
+  clearChildren(txt); txt.appendChild(el);
+  bar.className = 'toast-bar '+type+' visible';
+  if (toastTimers[id]) clearTimeout(toastTimers[id]);
+  toastTimers[id] = setTimeout(() => bar.classList.remove('visible'), 5000);
+}
+
+function hideAllToasts() { ['errorBar','hintBar','infoBar'].forEach(id => $(id).classList.remove('visible')); }
+
+// ===== SETTINGS =====
+function applyTheme() { document.documentElement.setAttribute('data-theme',settings.dark?'dark':'light'); $('darkToggle').checked=settings.dark; }
+
+function updateSettingsUI() {
+  $('darkToggle').checked = settings.dark;
+  $('soundToggle').checked = settings.sound;
+  $('geminiKeyInput').value = settings.geminiKey ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '';
+  $('statGames').textContent = stats.gamesPlayed;
+  const wp = stats.gamesPlayed ? Math.round((stats.gamesWon/stats.gamesPlayed)*100) : 0;
+  $('statWinPct').textContent = wp + '%';
+  $('statBestXP').textContent = xpData.bestXP;
+  const avgXP = xpData.history.length ? Math.round(xpData.history.reduce((s,h)=>s+h.xp,0)/xpData.history.length) : 0;
+  $('statAvgXP').textContent = avgXP;
+}
+
+function saveGeminiKey() {
+  const v = $('geminiKeyInput').value.trim();
+  if (v && !v.startsWith('\u2022')) {
+    settings.geminiKey = v; saveSettings();
+    $('geminiKeyInput').value = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+    showToast('success','מפתח נשמר!');
+  }
+}
+
+function confirmReset() {
+  if (confirm('למחוק את כל הנתונים? פעולה זו בלתי הפיכה.')) {
+    stats = {gamesPlayed:0,gamesWon:0,gamesLost:0,totalGuesses:0,bestWin:null,distribution:{}};
+    xpData = {total:0,streak:0,longestStreak:0,bestXP:0,history:[]};
+    saveStats(); saveXP(); localStorage.removeItem('karov_game');
+    updateSettingsUI();
+  }
+}
+
+// ===== PERSISTENCE =====
+function saveGame() {
+  localStorage.setItem('karov_game', JSON.stringify({
+    secretWord:state.secretWord, guesses:state.guesses, maxScore:state.maxScore,
+    startTime:state.startTime, gameOver:state.gameOver, gaveUp:state.gaveUp, hintsUsed:state.hintsUsed
+  }));
+}
+function saveSettings() { localStorage.setItem('karov_settings', JSON.stringify(settings)); }
+function loadSettings() {
+  try { const s=JSON.parse(localStorage.getItem('karov_settings')); if(s){settings.dark=s.dark!==undefined?s.dark:true;settings.sound=s.sound!==undefined?s.sound:true;settings.geminiKey=s.geminiKey||'';}} catch(e){}
+}
+function saveStats() { localStorage.setItem('karov_stats', JSON.stringify(stats)); }
+function loadStats() { try { const s=JSON.parse(localStorage.getItem('karov_stats')); if(s) Object.assign(stats,s); } catch(e){} }
+function saveXP() { localStorage.setItem('karov_xp', JSON.stringify(xpData)); }
+function loadXP() { try { const x=JSON.parse(localStorage.getItem('karov_xp')); if(x) Object.assign(xpData,x); } catch(e){} }
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>
