@@ -476,7 +476,7 @@ function getWordPool(diff){
 }
 
 // ===== STATE =====
-let state={secretWord:'',guesses:[],maxScore:0,startTime:null,timerInterval:null,gameOver:false,gaveUp:false,
+let state={secretWord:'',guesses:[],maxScore:0,startTime:null,timerInterval:null,pausedElapsed:0,gameOver:false,gaveUp:false,
   hintsUsed:{firstLetter:false,wordLength:false,lastLetter:false,category:false},difficulty:'medium',currentXP:500};
 let settings={dark:true,sound:true,geminiKey:''};
 let stats={gamesPlayed:0,gamesWon:0,gamesLost:0,totalGuesses:0,bestWin:null,distribution:{}};
@@ -590,7 +590,7 @@ function resumeGame(){
     const sg=JSON.parse(saved);
     if(!sg.secretWord||!embeddings[sg.secretWord]||sg.gameOver||sg.gaveUp)return;
     state.secretWord=sg.secretWord;state.guesses=sg.guesses||[];state.maxScore=sg.maxScore||0;
-    state.startTime=sg.startTime?new Date(sg.startTime):new Date();
+    state.startTime=sg.startTime?new Date(sg.startTime).getTime():Date.now();state.pausedElapsed=sg.pausedElapsed||0;
     state.gameOver=false;state.gaveUp=false;
     state.hintsUsed=sg.hintsUsed||{firstLetter:false,wordLength:false,lastLetter:false};
     state.difficulty=sg.difficulty||'medium';
@@ -605,7 +605,7 @@ function startNewGame(diff){
   const pool=getWordPool(diff);
   const pickFrom=pool.length>0?pool:wordList;
   state.secretWord=pickFrom[Math.floor(Math.random()*pickFrom.length)];
-  state.guesses=[];state.maxScore=0;state.startTime=new Date();
+  state.guesses=[];state.maxScore=0;state.startTime=Date.now();state.pausedElapsed=0;
   state.gameOver=false;state.gaveUp=false;
   state.hintsUsed={firstLetter:false,wordLength:false,lastLetter:false};
   state.difficulty=diff;state.currentXP=d.startXP;
@@ -742,9 +742,22 @@ function updateUI(){
 }
 
 // ===== TIMER =====
-function startTimer(){if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}state.timerInterval=setInterval(updateTimer,1000);updateTimer()}
-function updateTimer(){if(!state.startTime||state.gameOver)return;const e=Math.floor((Date.now()-new Date(state.startTime).getTime())/1000);$('timer').textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0')}
-function getElapsed(){if(!state.startTime)return'00:00';const e=Math.floor((Date.now()-new Date(state.startTime).getTime())/1000);return String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0')}
+function startTimer(){
+  if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null}
+  if(state.pausedElapsed)state.startTime=Date.now()-state.pausedElapsed;
+  state.pausedElapsed=0;
+  state.timerInterval=setInterval(updateTimer,1000);updateTimer();
+}
+function updateTimer(){
+  if(!state.startTime||state.gameOver)return;
+  if(!document.querySelector('.app.ready')){
+    state.pausedElapsed=Date.now()-state.startTime;
+    clearInterval(state.timerInterval);state.timerInterval=null;return;
+  }
+  const e=Math.floor((Date.now()-state.startTime)/1000);
+  $('timer').textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');
+}
+function getElapsed(){if(!state.startTime)return'00:00';const e=Math.floor((Date.now()-state.startTime)/1000);return String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0')}
 
 // ===== GIVE UP =====
 function handleGiveUp(){
@@ -852,7 +865,7 @@ function saveGeminiKey(){const v=$('geminiKeyInput').value.trim();if(v&&!v.start
 function confirmReset(){if(confirm('למחוק את כל הנתונים? פעולה זו בלתי הפיכה.')){stats={gamesPlayed:0,gamesWon:0,gamesLost:0,totalGuesses:0,bestWin:null,distribution:{}};xpData={total:0,streak:0,longestStreak:0,bestXP:0,history:[]};saveStats();saveXP();localStorage.removeItem('karov_game');updateSettingsUI()}}
 
 // ===== PERSISTENCE =====
-function saveGame(){localStorage.setItem('karov_game',JSON.stringify({secretWord:state.secretWord,guesses:state.guesses,maxScore:state.maxScore,startTime:state.startTime,gameOver:state.gameOver,gaveUp:state.gaveUp,hintsUsed:state.hintsUsed,difficulty:state.difficulty,currentXP:state.currentXP}))}
+function saveGame(){localStorage.setItem('karov_game',JSON.stringify({secretWord:state.secretWord,guesses:state.guesses,maxScore:state.maxScore,startTime:state.startTime,pausedElapsed:state.pausedElapsed,gameOver:state.gameOver,gaveUp:state.gaveUp,hintsUsed:state.hintsUsed,difficulty:state.difficulty,currentXP:state.currentXP}))}
 function saveSettings(){localStorage.setItem('karov_settings',JSON.stringify(settings))}
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('karov_settings'));if(s){settings.dark=s.dark!==undefined?s.dark:true;settings.sound=s.sound!==undefined?s.sound:true;settings.geminiKey=s.geminiKey||''}}catch(e){}}
 function saveStats(){localStorage.setItem('karov_stats',JSON.stringify(stats))}
