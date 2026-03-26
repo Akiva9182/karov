@@ -30,9 +30,9 @@ body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); 
 .loading-screen { position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; transition:opacity .4s; }
 .loading-screen.hidden { opacity:0; pointer-events:none; }
 .loading-title { font-size:2rem; font-weight:800; background:linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.loading-bar-track { width:200px; height:6px; border-radius:3px; background:var(--bg-input); overflow:hidden; }
-.loading-bar-fill { height:100%; border-radius:3px; background:var(--primary); width:30%; animation:indeterminate 1.2s ease-in-out infinite; }
-@keyframes indeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
+.loading-bar-track { width:200px; height:6px; border-radius:3px; background:var(--bg-input); overflow:hidden; position:relative; }
+.loading-bar-fill { position:absolute; top:0; left:0; right:0; height:100%; border-radius:3px; background:linear-gradient(90deg,transparent,var(--primary),transparent); animation:shimmerBar 1.4s ease-in-out infinite; }
+@keyframes shimmerBar { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 .loading-text { font-size:.85rem; color:var(--text-dim); }
 .loading-error { max-width:400px; text-align:center; padding:24px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; display:none; }
 .loading-error.visible { display:block; }
@@ -489,6 +489,9 @@ const LEVELS = [
 ];
 
 const HINT_COSTS = { firstLetter: 30, wordLength: 30, lastLetter: 50 };
+const EMBEDDINGS_VERSION = 1;
+const EMBEDDINGS_URL = 'embeddings.json?v=' + EMBEDDINGS_VERSION;
+const CACHE_NAME = 'karov-embeddings-v' + EMBEDDINGS_VERSION;
 
 // ===== EMBEDDINGS ENGINE =====
 let embeddings = {};
@@ -618,7 +621,20 @@ function getLevelInfo(totalXP) {
 // ===== LOADING =====
 async function loadEmbeddings() {
   try {
-    const resp = await fetch('embeddings.json');
+    let resp;
+    if ('caches' in window) {
+      const cache = await caches.open(CACHE_NAME);
+      resp = await cache.match(EMBEDDINGS_URL);
+      if (!resp) {
+        resp = await fetch(EMBEDDINGS_URL);
+        if (resp.ok) await cache.put(EMBEDDINGS_URL, resp.clone());
+      }
+      // Clean old cache versions
+      const keys = await caches.keys();
+      for (const k of keys) { if (k.startsWith('karov-embeddings-') && k !== CACHE_NAME) caches.delete(k); }
+    } else {
+      resp = await fetch(EMBEDDINGS_URL);
+    }
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     embeddings = await resp.json();
     wordList = Object.keys(embeddings);
